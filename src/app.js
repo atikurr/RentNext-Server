@@ -1,7 +1,7 @@
+
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-
 import { toNodeHandler } from "better-auth/node";
 
 import { auth } from "./config/auth.js";
@@ -25,14 +25,38 @@ const app = express();
 
 /*
 |--------------------------------------------------------------------------
-| CORS
+| CORS CONFIGURATION
 |--------------------------------------------------------------------------
 */
 
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://rent-next-client.vercel.app",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
   })
 );
 
@@ -42,10 +66,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.all(
-  "/api/auth/*splat",
-  toNodeHandler(auth)
-);
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
 /*
 |--------------------------------------------------------------------------
@@ -53,14 +74,17 @@ app.all(
 |--------------------------------------------------------------------------
 */
 
+// JSON parser
 app.use(express.json());
 
+// Form data parser
 app.use(
   express.urlencoded({
     extended: true,
   })
 );
 
+// Cookie parser
 app.use(cookieParser());
 
 /*
@@ -69,10 +93,7 @@ app.use(cookieParser());
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/upload",
-  uploadRoutes
-);
+app.use("/api/upload", uploadRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -80,10 +101,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/properties",
-  propertyRoutes
-);
+app.use("/api/properties", propertyRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -91,10 +109,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/bookings",
-  bookingRoutes
-);
+app.use("/api/bookings", bookingRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -102,10 +117,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/favorites",
-  favoriteRoutes
-);
+app.use("/api/favorites", favoriteRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -113,10 +125,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/payments",
-  paymentRoutes
-);
+app.use("/api/payments", paymentRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -124,10 +133,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/reviews",
-  reviewRoutes
-);
+app.use("/api/reviews", reviewRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -135,10 +141,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/admin/properties",
-  adminPropertyRoutes
-);
+app.use("/api/admin/properties", adminPropertyRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -146,10 +149,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/admin/users",
-  adminUserRoutes
-);
+app.use("/api/admin/users", adminUserRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -157,10 +157,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/admin/bookings",
-  adminBookingRoutes
-);
+app.use("/api/admin/bookings", adminBookingRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -168,10 +165,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/admin/transactions",
-  adminTransactionRoutes
-);
+app.use("/api/admin/transactions", adminTransactionRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -179,10 +173,7 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/admin/analytics",
-  adminAnalyticsRoutes
-);
+app.use("/api/admin/analytics", adminAnalyticsRoutes);
 
 /*
 |--------------------------------------------------------------------------
@@ -190,43 +181,33 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  "/api/owner",
-  ownerAnalyticsRoutes
-);
+app.use("/api/owner", ownerAnalyticsRoutes);
 
 /*
 |--------------------------------------------------------------------------
-| ROOT ROUTE
+| ROOT HEALTH CHECK
 |--------------------------------------------------------------------------
 */
 
-app.get(
-  "/",
-  (req, res) => {
-    res.status(200).json({
-      success: true,
-      message:
-        "Property Rental API is running",
-    });
-  }
-);
+app.get("/", (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "Property Rental API is running",
+  });
+});
 
 /*
 |--------------------------------------------------------------------------
-| 404 ROUTE
+| 404 HANDLER
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  (req, res) => {
-    res.status(404).json({
-      success: false,
-      message:
-        "Route not found.",
-    });
-  }
-);
+app.use((req, res) => {
+  return res.status(404).json({
+    success: false,
+    message: "Route not found.",
+  });
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -234,27 +215,24 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-app.use(
-  (
-    error,
-    req,
-    res,
-    next
-  ) => {
-    console.error(
-      "Global error:",
-      error
-    );
+app.use((error, req, res, next) => {
+  console.error("Global error:", error.message);
 
-    return res.status(
-      error.status || 500
-    ).json({
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  if (error.message === "Not allowed by CORS") {
+    return res.status(403).json({
       success: false,
-      message:
-        error.message ||
-        "Internal server error.",
+      message: "Origin not allowed by CORS.",
     });
   }
-);
+
+  return res.status(error.status || 500).json({
+    success: false,
+    message: error.message || "Internal server error.",
+  });
+});
 
 export default app;
