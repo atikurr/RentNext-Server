@@ -1,19 +1,31 @@
+
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { jwt } from "better-auth/plugins";
 import { MongoClient } from "mongodb";
 
-const mongoClient = new MongoClient(
-  process.env.MONGODB_URL
-);
+const mongoUrl = process.env.MONGODB_URL;
 
+if (!mongoUrl) {
+  throw new Error("MONGODB_URL is missing in environment variables.");
+}
 
-const database =
-  mongoClient.db("property_db");
+const mongoClient = new MongoClient(mongoUrl);
+const database = mongoClient.db("property_db");
+
+const frontendUrl = (
+  process.env.FRONTEND_URL || "http://localhost:3000"
+).replace(/\/+$/, "");
+
+const backendUrl = (
+  process.env.BETTER_AUTH_URL || "http://localhost:5000"
+).replace(/\/+$/, "");
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL,
+  baseURL: backendUrl,
+
+  secret: process.env.BETTER_AUTH_SECRET,
 
   database: mongodbAdapter(database, {
     client: mongoClient,
@@ -43,34 +55,16 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user, ctx) => {
-          let assignedRole =
-            user.role || "tenant";
+          let assignedRole = user.role || "tenant";
 
-          /*
-            Public registration can create
-            only Tenant or Owner.
+          if (ctx?.path === "/sign-up/email") {
+            const requestedRole = ctx?.body?.role;
 
-            Admin must be created manually
-            by changing the role in MongoDB.
-          */
-          if (
-            ctx?.path === "/sign-up/email"
-          ) {
-            const requestedRole =
-              ctx?.body?.role;
-
-            if (
-              !["tenant", "owner"].includes(
-                requestedRole
-              )
-            ) {
-              throw new APIError(
-                "BAD_REQUEST",
-                {
-                  message:
-                    "Invalid account type. Please select Tenant or Owner.",
-                }
-              );
+            if (!["tenant", "owner"].includes(requestedRole)) {
+              throw new APIError("BAD_REQUEST", {
+                message:
+                  "Invalid account type. Please select Tenant or Owner.",
+              });
             }
 
             assignedRole = requestedRole;
@@ -93,17 +87,13 @@ export const auth = betterAuth({
 
   socialProviders: {
     google: {
-      clientId:
-        process.env.GOOGLE_CLIENT_ID,
-      clientSecret:
-        process.env.GOOGLE_CLIENT_SECRET,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     },
 
     facebook: {
-      clientId:
-        process.env.FACEBOOK_CLIENT_ID,
-      clientSecret:
-        process.env.FACEBOOK_CLIENT_SECRET,
+      clientId: process.env.FACEBOOK_CLIENT_ID,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
     },
   },
 
@@ -115,10 +105,7 @@ export const auth = betterAuth({
           email: user.email,
           role: user.role,
           name: user.name,
-          photo:
-            user.photo ||
-            user.image ||
-            "",
+          photo: user.photo || user.image || "",
         }),
 
         expirationTime: "7d",
@@ -128,5 +115,8 @@ export const auth = betterAuth({
 
   trustedOrigins: [
     "http://localhost:3000",
+    frontendUrl,
+    "https://rent-next-client.vercel.app",
+    "https://property-rental-rosy.vercel.app",
   ],
 });
