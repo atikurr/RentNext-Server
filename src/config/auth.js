@@ -1,4 +1,3 @@
-
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
@@ -9,6 +8,10 @@ const mongoUrl = process.env.MONGODB_URL;
 
 if (!mongoUrl) {
   throw new Error("MONGODB_URL is missing in environment variables.");
+}
+
+if (!process.env.BETTER_AUTH_SECRET) {
+  throw new Error("BETTER_AUTH_SECRET is missing in environment variables.");
 }
 
 const mongoClient = new MongoClient(mongoUrl);
@@ -22,14 +25,24 @@ const backendUrl = (
   process.env.BETTER_AUTH_URL || "http://localhost:5000"
 ).replace(/\/+$/, "");
 
+const trustedOrigins = [
+  "http://localhost:3000",
+  "https://rent-next-client.vercel.app",
+  "https://property-rental-rosy.vercel.app",
+  frontendUrl,
+].filter((origin, index, origins) => {
+  return origin && origins.indexOf(origin) === index;
+});
+
 export const auth = betterAuth({
   baseURL: backendUrl,
-
   secret: process.env.BETTER_AUTH_SECRET,
 
   database: mongodbAdapter(database, {
     client: mongoClient,
   }),
+
+  trustedOrigins,
 
   user: {
     additionalFields: {
@@ -40,7 +53,6 @@ export const auth = betterAuth({
         input: false,
         returned: true,
       },
-
       photo: {
         type: "string",
         required: false,
@@ -90,7 +102,6 @@ export const auth = betterAuth({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     },
-
     facebook: {
       clientId: process.env.FACEBOOK_CLIENT_ID,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
@@ -107,16 +118,8 @@ export const auth = betterAuth({
           name: user.name,
           photo: user.photo || user.image || "",
         }),
-
         expirationTime: "7d",
       },
     }),
-  ],
-
-  trustedOrigins: [
-    "http://localhost:3000",
-    frontendUrl,
-    "https://rent-next-client.vercel.app",
-    "https://property-rental-rosy.vercel.app",
   ],
 });
