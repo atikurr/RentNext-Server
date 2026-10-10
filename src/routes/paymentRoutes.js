@@ -15,12 +15,6 @@ const FRONTEND_URL =
   process.env.FRONTEND_URL ||
   "http://localhost:3000";
 
-/*
-|--------------------------------------------------------------------------
-| HELPERS
-|--------------------------------------------------------------------------
-*/
-
 const getPropertyOwner = (property) => {
   const owner =
     property?.owner ||
@@ -78,20 +72,6 @@ const calculateEndDate = (
   return endDate;
 };
 
-/*
-|--------------------------------------------------------------------------
-| CHECK PROPERTY AVAILABILITY
-|--------------------------------------------------------------------------
-|
-| Same property + overlapping dates = unavailable
-|
-| Same property + different dates = available
-|
-| Rejected / Cancelled bookings do not block
-|
-|--------------------------------------------------------------------------
-*/
-
 const checkPropertyAvailability = async ({
   propertyId,
   startDate,
@@ -130,17 +110,6 @@ const checkPropertyAvailability = async ({
 
   return !existingBooking;
 };
-
-/*
-|--------------------------------------------------------------------------
-| CREATE STRIPE CHECKOUT SESSION
-|--------------------------------------------------------------------------
-|
-| POST
-| /api/payments/create-checkout-session
-|
-|--------------------------------------------------------------------------
-*/
 
 router.post(
   "/create-checkout-session",
@@ -342,22 +311,10 @@ router.post(
         monthlyRent *
         bookingDuration;
 
-      /*
-      |--------------------------------------------------------------------------
-      | STRIPE AMOUNT
-      |--------------------------------------------------------------------------
-      */
-
       const stripeAmount =
         Math.round(
           totalAmount * 100
         );
-
-      /*
-      |--------------------------------------------------------------------------
-      | CREATE STRIPE SESSION
-      |--------------------------------------------------------------------------
-      */
 
       const checkoutSession =
         await stripe.checkout.sessions.create(
@@ -481,19 +438,6 @@ router.post(
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| VERIFY STRIPE PAYMENT
-|--------------------------------------------------------------------------
-|
-| IMPORTANT:
-|
-| Frontend success page calls:
-|
-| /api/payments/verify-session/:sessionId
-|
-|--------------------------------------------------------------------------
-*/
 
 router.get(
   "/verify-session/:sessionId",
@@ -672,16 +616,6 @@ router.get(
               stripeSession.id
             );
 
-      /*
-      |--------------------------------------------------------------------------
-      | CHECK EXISTING TRANSACTION
-      |--------------------------------------------------------------------------
-      |
-      | Refreshing the success page should NOT
-      | create another booking.
-      |
-      |--------------------------------------------------------------------------
-      */
 
       const existingTransaction =
         await Transaction.findOne({
@@ -749,16 +683,6 @@ router.get(
           duration
         );
 
-      /*
-      |--------------------------------------------------------------------------
-      | CHECK AVAILABILITY AGAIN
-      |--------------------------------------------------------------------------
-      |
-      | Important because another user could have booked
-      | the property while this payment was being processed.
-      |
-      |--------------------------------------------------------------------------
-      */
 
       const isAvailable =
         await checkPropertyAvailability(
