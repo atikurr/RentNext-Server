@@ -158,7 +158,7 @@ export const auth = betterAuth({
     },
   },
 
-  // ======================================
+  // =====================================
   // JWT CONFIGURATION
   // ======================================
 
@@ -178,12 +178,7 @@ export const auth = betterAuth({
     }),
   ],
 
-  // ======================================
-  // COOKIE CONFIGURATION (cross-domain fix)
-  // ======================================
-  // Frontend (vercel.app) ar backend (onrender.com) alada site,
-  // tai production-e SameSite=None + Secure lagbe.
-  // Local-e (http) Lax + non-secure.
+  
 
   advanced: {
     useSecureCookies: isProd,

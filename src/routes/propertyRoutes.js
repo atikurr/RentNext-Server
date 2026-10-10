@@ -9,22 +9,6 @@ import {
 
 const router = express.Router();
 
-/*
-|--------------------------------------------------------------------------
-| PUBLIC — GET ALL APPROVED PROPERTIES
-|--------------------------------------------------------------------------
-| GET /api/properties
-|
-| Query:
-| ?search=Dhaka
-| ?type=Apartment
-| ?sort=price_asc
-| ?sort=price_desc
-| ?page=1
-| ?limit=9
-|
-|--------------------------------------------------------------------------
-*/
 
 router.get("/", async (req, res) => {
   try {
@@ -432,17 +416,6 @@ router.get(
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| GET SINGLE PROPERTY
-|--------------------------------------------------------------------------
-| GET /api/properties/:id
-|
-| Public approved property can be viewed.
-| Owner can view their own property even if Pending/Rejected.
-|--------------------------------------------------------------------------
-*/
-
 router.get(
   "/:id",
   async (req, res) => {
@@ -504,17 +477,7 @@ router.get(
       }
 
       try {
-        /*
-        |--------------------------------------------------------------------------
-        | We do not manually verify JWT here.
-        | Instead, owner frontend normally uses
-        | the protected edit endpoint.
-        |
-        | For security, non-approved public
-        | properties remain unavailable here.
-        |--------------------------------------------------------------------------
-        */
-
+  
         return res.status(403).json({
           success: false,
           message:
@@ -546,10 +509,8 @@ router.get(
 |--------------------------------------------------------------------------
 | OWNER — UPDATE PROPERTY
 |--------------------------------------------------------------------------
-| PUT /api/properties/:id
-|--------------------------------------------------------------------------
-*/
 
+*/
 router.put(
   "/:id",
   protect,
